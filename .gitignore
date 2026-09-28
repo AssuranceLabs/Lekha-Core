@@ -1,0 +1,29 @@
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+coverage/
+
+# .NET
+**/bin/
+**/obj/
+TestResults/
+
+# IDEs
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Logs and local data
+*.log
+backups/
