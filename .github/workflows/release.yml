@@ -1,0 +1,168 @@
+name: Release Production
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    environment: production
+
+    env:
+      RELEASE_VERSION: ${{ github.ref_name }}
+      RELEASE_SHA: ${{ github.sha }}
+      IMAGE_OWNER: ${{ github.repository_owner }}
+
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Validate release tag
+        run: |
+          if ! [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release version: $RELEASE_VERSION"
+            exit 1
+          fi
+
+      - name: Verify release commit belongs to main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" origin/main; then
+            echo "Release commit is not contained in origin/main."
+            exit 1
+          fi
+
+      - name: Normalize image owner
+        run: |
+          echo "IMAGE_OWNER=${IMAGE_OWNER,,}" >> "$GITHUB_ENV"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend lint
+        working-directory: frontend
+        run: npm run lint --if-present
+
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test --if-present
+
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore backend
+        run: dotnet restore backend/LekhaCore.sln
+
+      - name: Build backend
+        run: >
+          dotnet build backend/LekhaCore.sln
+          --configuration Release
+          --no-restore
+
+      - name: Test backend
+        run: >
+          dotnet test backend/LekhaCore.sln
+          --configuration Release
+          --no-build
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend release
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/lekhacore-frontend:${{ env.RELEASE_VERSION }}
+            ghcr.io/${{ env.IMAGE_OWNER }}/lekhacore-frontend:${{ env.RELEASE_SHA }}
+
+      - name: Build and push API release
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/${{ env.IMAGE_OWNER }}/lekhacore-api:${{ env.RELEASE_VERSION }}
+            ghcr.io/${{ env.IMAGE_OWNER }}/lekhacore-api:${{ env.RELEASE_SHA }}
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Prepare production directory
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh "$USER@$HOST" \
+            "mkdir -p '$DEPLOY_PATH/infrastructure/docker/compose' '$DEPLOY_PATH/infrastructure/nginx'"
+
+      - name: Copy production configuration
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          scp infrastructure/docker/compose/docker-compose.prod.yml \
+            "$USER@$HOST:$DEPLOY_PATH/infrastructure/docker/compose/"
+          scp infrastructure/nginx/nginx.conf \
+            "$USER@$HOST:$DEPLOY_PATH/infrastructure/nginx/nginx.conf"
+
+      - name: Deploy production
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          ssh "$USER@$HOST" \
+            "cd '$DEPLOY_PATH' &&
+             IMAGE_OWNER='${IMAGE_OWNER}' IMAGE_TAG='${RELEASE_VERSION}' \
+             docker compose --env-file .env.production \
+               -f infrastructure/docker/compose/docker-compose.prod.yml pull &&
+             IMAGE_OWNER='${IMAGE_OWNER}' IMAGE_TAG='${RELEASE_VERSION}' \
+             docker compose --env-file .env.production \
+               -f infrastructure/docker/compose/docker-compose.prod.yml up -d --remove-orphans"

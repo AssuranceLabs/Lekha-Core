@@ -1,0 +1,32 @@
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY ["src/LekhaCore.Api/LekhaCore.Api.csproj", "src/LekhaCore.Api/"]
+
+# Add COPY instructions for referenced project files here.
+
+RUN --mount=type=cache,id=lekha-nuget,target=/root/.nuget/packages \
+    dotnet restore src/LekhaCore.Api/LekhaCore.Api.csproj
+
+COPY . .
+
+RUN --mount=type=cache,id=lekha-nuget,target=/root/.nuget/packages \
+    dotnet publish src/LekhaCore.Api/LekhaCore.Api.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore \
+    -p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+
+ENV ASPNETCORE_HTTP_PORTS=8080
+
+EXPOSE 8080
+
+USER $APP_UID
+
+COPY --from=build --chown=$APP_UID:$APP_UID /app/publish/ .
+
+ENTRYPOINT ["dotnet", "LekhaCore.Api.dll"]
