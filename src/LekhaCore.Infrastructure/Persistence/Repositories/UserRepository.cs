@@ -18,7 +18,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
     public async Task<User?> GetByIdAsync(Guid id)
     {
         return await context.Users
-            .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
+            .FirstOrDefaultAsync(x => x.GUID== id && !x.IsDeleted);
     }
 
     public async Task<List<User>> GetByRoleAsync(Role role)

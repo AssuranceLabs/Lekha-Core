@@ -1,9 +1,9 @@
-﻿using BELMS.Application.Common.Pagination;
+﻿using LekhaCore.Application.Common.Pagination;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace BELMS.Application.Common.Filtering
+namespace LekhaCore.Application.Common.Filtering
 {
     public abstract class BaseFilter : PaginationRequest
     {

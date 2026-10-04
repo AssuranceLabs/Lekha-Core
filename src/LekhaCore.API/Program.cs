@@ -1,3 +1,4 @@
+using LekhaCore.Api.Extensions;
 using Microsoft.AspNetCore.ResponseCompression;
 using Scalar.AspNetCore;
 
@@ -71,8 +72,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseAuthorization();
-
-app.MapControllers();
+app.ConfigureLekhaCorePipeline();
 
 app.Run();

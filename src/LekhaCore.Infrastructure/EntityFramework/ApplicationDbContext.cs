@@ -5,6 +5,7 @@ using LekhaCore.Core.Domain.Common.UserActivity;
 using LekhaCore.Core.Domain.HR.DbEntities;
 using LekhaCore.Core.Domain.Kyc.DbEntities;
 using LekhaCore.Core.Domain.OutsourcedHR.DbEntities;
+using LekhaCore.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace LekhaCore.Data.EntityFramework
@@ -19,35 +20,8 @@ namespace LekhaCore.Data.EntityFramework
         }
 
         //KYC
-        public DbSet<KycSection> KycSections { get; set; }
-        public DbSet<Category> Categories { get; set; }
-        public DbSet<KycDetail> KycDetails { get; set; }
-        public DbSet<KycDetailAction> KycDetailActions { get; set; }
-        public DbSet<CommonAttachment> CommonAttachments { get; set; }
-        public DbSet<KycDeclaration> KycDeclarations { get; set; }
-
-        //HR
-        public DbSet<FiscalYear> FiscalYears { get; set; }
-        public DbSet<Month> Months { get; set; }
-        public DbSet<Employee> Employees { get; set; }
-        public DbSet<PayComponent> PayComponents { get; set; }
-        public DbSet<PayrollPeriod> PayrollPeriods { get; set; }
-        public DbSet<PayrollPeriodComponent> PayrollPeriodComponents { get; set; }
-        public DbSet<Setting> Settings { get; set; }
-        public DbSet<EmployeePayroll> EmployeePayrolls { get; set; }
-        public DbSet<EmployeePayrollDetail> EmployeePayrollDetails { get; set; }
-
-        //Outsourced HR
-        public DbSet<Designation> Designations { get; set; }
-        public DbSet<PayComponents> outsourcePayComponents { get; set; }
-        public DbSet<OutsourceCompany> OutsourceCompanies { get; set; }
-        public DbSet<OutsourceEmployee> OutsourceEmployees { get; set; }
-        public DbSet<OutsourceEmployeePayComponent> OutsourceEmployeePayComponent { get; set; }
-
-
-        //Audit
-        public DbSet<AuditLog> AuditLogs { get; set; }
-        public DbSet<ActivityLog> ActivityLogs { get; set; }
+        public DbSet<User> Users { get; set; }
+      
 
         public virtual int Commit(bool isSoftDelete = true)
         {

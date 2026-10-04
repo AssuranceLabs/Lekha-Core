@@ -1,5 +1,5 @@
 ﻿using LekhaCore.Core.BaseEntity;
-using LekhaCore.Domain.Common;
+using LekhaCore.Core.Domain.Common;
 using LekhaCore.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;

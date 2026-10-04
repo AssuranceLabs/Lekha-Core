@@ -1,7 +1,7 @@
-using BELMS.Application.DTOs.Notifications;
-using BELMS.Domain.Common;
+using LekhaCore.Application.DTOs.Notifications;
+using LekhaCore.Domain.Common;
 
-namespace BELMS.Application.Interfaces.IService;
+namespace LekhaCore.Application.Interfaces.IService;
 
 public interface INotificationService
 {

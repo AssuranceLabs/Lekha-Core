@@ -1,6 +1,6 @@
-using BELMS.Domain.Entities;
+using LekhaCore.Domain.Entities;
 
-namespace BELMS.Application.Interfaces.IService;
+namespace LekhaCore.Application.Interfaces.IService;
 
 public interface IJwtTokenGenerator
 {

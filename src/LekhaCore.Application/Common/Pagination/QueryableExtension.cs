@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace BELMS.Application.Common.Pagination
+namespace LekhaCore.Application.Common.Pagination
 {
     public static class QueryableExtensions
     {

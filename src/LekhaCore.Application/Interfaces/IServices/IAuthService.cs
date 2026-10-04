@@ -1,8 +1,8 @@
-using BELMS.Application.DTOs;
-using BELMS.Application.DTOs.Auth;
-using BELMS.Domain.Common;
+using LekhaCore.Application.DTOs;
+using LekhaCore.Application.DTOs.Auth;
+using LekhaCore.Domain.Common;
 
-namespace BELMS.Application.Interfaces.IService;
+namespace LekhaCore.Application.Interfaces.IService;
 
 public interface IAuthService
 {

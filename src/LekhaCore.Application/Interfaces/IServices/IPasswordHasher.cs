@@ -1,4 +1,4 @@
-namespace BELMS.Application.Interfaces.IService;
+namespace LekhaCore.Application.Interfaces.IService;
 
 public interface IPasswordHasher
 {

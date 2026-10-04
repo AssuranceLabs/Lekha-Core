@@ -1,4 +1,4 @@
-using LekhaCore.Domain.Entities;
+using LekhaCore.Core.Domain.Common;
 
 namespace LekhaCore.Application.Interfaces.IRepo;
 

@@ -77,68 +77,6 @@ namespace LekhaCore.Data.EntityFramework
             return await query.FirstOrDefaultAsync();
         }
 
-        protected virtual async Task<T> ExecuteReaderAsync<T>(Func<DbDataReader, T> mapEntities, string exec, SqlParameter[]? parameters = null)
-        {
-            if (_dbContext.Database.GetDbConnection().State == ConnectionState.Closed)
-            {
-                _dbContext.Database.OpenConnection();
-            }
 
-            var command = _dbContext.Database.GetDbConnection().CreateCommand();
-            command.CommandText = exec;
-
-            if (_dbContext.Database.CurrentTransaction != null)
-                command.Transaction = _dbContext.Database.CurrentTransaction.GetDbTransaction();
-
-            if (parameters != null)
-            {
-                foreach (var parameter in parameters)
-                {
-                    command.Parameters.Add(parameter);
-                }
-            }
-
-            using var reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
-
-            //NOTE Removed this because data didnot bind in multiset object if 1st result set is null.
-            //TODO But this could result in error.
-            //if (!reader.HasRows)
-            //    while (await reader.NextResultAsync()) { } 
-
-            T data = mapEntities(reader);
-            return data;
-        }
-
-        public async Task<ICollection<TOutput>> ExecuteReaderAsync<TOutput>(string commandText, CommandType commandType, SqlParameter[]? parameters = null) where TOutput : class
-        {
-            if (_dbContext.Database.GetDbConnection().State == ConnectionState.Closed)
-            {
-                _dbContext.Database.OpenConnection();
-            }
-
-            var command = _dbContext.Database.GetDbConnection().CreateCommand();
-
-            if (_dbContext.Database.CurrentTransaction != null)
-                command.Transaction = _dbContext.Database.CurrentTransaction.GetDbTransaction();
-
-            command.CommandText = commandText;
-            command.CommandType = commandType;
-
-            if (parameters != null)
-            {
-                foreach (var parameter in parameters)
-                {
-                    command.Parameters.Add(parameter);
-                }
-            }
-
-            using DbDataReader reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
-
-            if (!reader.HasRows)
-                while (await reader.NextResultAsync()) { }
-
-            var mapper = new DataReaderMapper<TOutput>();
-            return mapper.MapToList(reader);
-        }
     }
 }

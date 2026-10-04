@@ -22,9 +22,6 @@ public class JwtTokenGenerator(IOptions<JwtSettings> options) : IJwtTokenGenerat
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new("UserId", user.Id.ToString()),
-            new(ClaimTypes.Name, user.FullName),
-            new("FullName", user.FullName),
-            new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Role, user.Role.ToString())
         };
 

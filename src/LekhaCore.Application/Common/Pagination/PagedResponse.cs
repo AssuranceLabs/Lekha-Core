@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace BELMS.Application.Common.Pagination
+namespace LekhaCore.Application.Common.Pagination
 {
     public class PagedResponse<T>
     {
