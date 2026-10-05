@@ -1,17 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using LekhaCore.Core.Domain.Common;
 
-namespace LekhaCore.Domain.Entities
+namespace LekhaCore.Domain.Entities;
+
+[AuditSubType("RefreshToken")]
+public class RefreshToken : IAuditableEntity
 {
-    public class RefreshToken
-    {
-        public Guid Id { get; set; }
-        public string Token { get; set; } = string.Empty;
-        public Guid UserId { get; set; }
-        public DateTime Created { get; set; }
-        public DateTime Expires { get; set; }
-        public bool IsRevoked { get; set; }
+    public Guid Id { get; set; }
 
-    }
+    public string TokenHash { get; set; } = string.Empty;
+
+    public Guid UserId { get; set; }
+
+    public DateTime Created { get; set; }
+
+    public DateTime Expires { get; set; }
+
+    public bool IsRevoked { get; set; }
+
+    public DateTime? RevokedAt { get; set; }
+
+    public string? ReplacedByTokenHash { get; set; }
+
+    public string? CreatedByIp { get; set; }
 }

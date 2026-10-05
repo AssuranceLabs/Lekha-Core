@@ -1,31 +1,27 @@
 using LekhaCore.Application.Interfaces.IRepo;
 using LekhaCore.Domain.Entities;
-using LekhaCore.Infrastructure.Persistence;
+using LekhaCore.Infrastructure.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
 namespace LekhaCore.Infrastructure.Persistence.Repositories;
 
-public class RefreshTokenRepository(AppDbContext context) : IRefreshTokenRepository
+public class RefreshTokenRepository(AppDbContext context) : Repository<RefreshToken>(context), IRefreshTokenRepository
 {
-    public async Task AddAsync(RefreshToken refreshToken)
+    public Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken = default)
     {
-        await context.RefreshTokens.AddAsync(refreshToken);
+        return Table.FirstOrDefaultAsync(token => token.TokenHash == tokenHash, cancellationToken);
     }
 
-    public async Task<RefreshToken?> GetByTokenAsync(string token)
+    public async Task RevokeAllForUserAsync(Guid userId, DateTime revokedAtUtc, CancellationToken cancellationToken = default)
     {
-        return await context.RefreshTokens
-            .FirstOrDefaultAsync(x => x.Token == token);
-    }
+        var tokens = await Table
+            .Where(token => token.UserId == userId && !token.IsRevoked)
+            .ToListAsync(cancellationToken);
 
-    public Task UpdateAsync(RefreshToken refreshToken)
-    {
-        context.RefreshTokens.Update(refreshToken);
-        return Task.CompletedTask;
-    }
-
-    public async Task SaveChangesAsync()
-    {
-        await context.SaveChangesAsync();
+        foreach (var token in tokens)
+        {
+            token.IsRevoked = true;
+            token.RevokedAt = revokedAtUtc;
+        }
     }
 }

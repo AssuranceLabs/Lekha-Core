@@ -1,13 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc.Filters;
+﻿namespace LekhaCore.Application.Interfaces;
 
-namespace Makuri.Core
+public interface ITransactionManager
 {
-    public interface ITransactionManager
-    {
-        void BeginTransaction();
-        void EndTransaction(ActionExecutedContext filterContext);
-        void EndTransaction();
-        void RollBack();
-        void CloseSession();
-    }
+    void BeginTransaction();
+
+    void EndTransaction(Exception? exception);
+
+    void EndTransaction();
+
+    void RollBack();
+
+    void CloseSession();
 }

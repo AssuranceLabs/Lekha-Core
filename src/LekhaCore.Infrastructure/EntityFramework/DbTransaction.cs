@@ -1,30 +1,30 @@
-﻿using LekhaCore.Core;
+﻿using LekhaCore.Application.Interfaces;
 using Microsoft.EntityFrameworkCore.Storage;
 
-namespace LekhaCore.Data.EntityFramework
+namespace LekhaCore.Infrastructure.EntityFramework;
+
+public class DbTransaction : ITransaction
 {
-    public class DbTransaction : ITransaction
+    private readonly IDbContextTransaction _efTransaction;
+
+    public DbTransaction(IDbContextTransaction efTransaction)
     {
-        private readonly IDbContextTransaction _efTransaction;
+        _efTransaction = efTransaction;
+    }
 
-        public DbTransaction(IDbContextTransaction efTransaction)
-        {
-            _efTransaction = efTransaction;
-        }
+    public void Commit()
+    {
+        _efTransaction.Commit();
+    }
 
-        public void Commit()
-        {
-            _efTransaction.Commit();
-        }
+    public void Rollback()
+    {
+        _efTransaction.Rollback();
+    }
 
-        public void Rollback()
-        {
-            _efTransaction.Rollback();
-        }
-
-        public void Dispose()
-        {
-            _efTransaction.Dispose();
-        }
+    public void Dispose()
+    {
+        _efTransaction.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

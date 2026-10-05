@@ -6,4 +6,9 @@ public class TokenResponseDto
 
     public string RefreshToken { get; set; } = string.Empty;
 
+    public DateTime AccessTokenExpiresAtUtc { get; set; }
+
+    public IReadOnlyList<string> Roles { get; set; } = [];
+
+    public string FullName { get; set; } = string.Empty;
 }

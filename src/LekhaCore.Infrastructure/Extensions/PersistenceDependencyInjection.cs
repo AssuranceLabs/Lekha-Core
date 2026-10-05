@@ -1,8 +1,9 @@
+using LekhaCore.Application.Interfaces;
 using LekhaCore.Application.Interfaces.IRepo;
-using LekhaCore.Application.Interfaces.IService;
+using LekhaCore.Infrastructure.Authentication;
+using LekhaCore.Infrastructure.EntityFramework;
 using LekhaCore.Infrastructure.Persistence;
 using LekhaCore.Infrastructure.Persistence.Repositories;
-using LekhaCore.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,19 +16,29 @@ public static class PersistenceDependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
 
+        services.AddScoped<IWorkContext, WorkContext>();
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(connectionString, sql =>
+            {
+                sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+                sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
+            }));
+
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<ITransactionManager, TransactionManager>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
-        services.AddScoped<IAssetRepository, AssetRepository>();
-        services.AddScoped<IWorkflowRepository, WorkflowRepository>();
-        services.AddScoped<IWorkflowDefinitionRepository, WorkflowDefinitionRepository>();
-        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IMenuRepository, MenuRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
-        services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
-        services.AddScoped<IExcelService, Services.ExcelService>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+        services.AddScoped<IRolePermissionRepository, RolePermissionRepository>();
 
         return services;
     }

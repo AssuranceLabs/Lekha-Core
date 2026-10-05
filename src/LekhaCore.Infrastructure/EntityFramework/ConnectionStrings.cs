@@ -2,8 +2,8 @@
 {
     public class ConnectionStrings
     {
-        public string LekhaCoreConnectionString { get; set; }
-        public string HRGratuityConnectionString { get; set; }
-        public string OutsourcedHRConnectionString { get; set; }
+        public string LekhaCoreConnectionString { get; set; } = string.Empty;
+        public string HRGratuityConnectionString { get; set; } = string.Empty;
+        public string OutsourcedHRConnectionString { get; set; } = string.Empty;
     }
 }

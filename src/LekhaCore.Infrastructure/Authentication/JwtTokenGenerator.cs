@@ -1,4 +1,5 @@
 using LekhaCore.Application.Interfaces.IService;
+using LekhaCore.Application.Options;
 using LekhaCore.Domain.Entities;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -20,15 +21,18 @@ public class JwtTokenGenerator(IOptions<JwtSettings> options) : IJwtTokenGenerat
 
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new("UserId", user.Id.ToString()),
-            new(ClaimTypes.Role, user.Role.ToString())
+            new(JwtRegisteredClaimNames.Sub, user.GUID.ToString("D")),
+            new("uid", user.GUID.ToString("D")),
+            new(ClaimTypes.NameIdentifier, user.GUID.ToString("D")),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Name, user.FullName)
         };
 
         var token = new JwtSecurityToken(
             issuer: _jwtSettings.Issuer,
             audience: _jwtSettings.Audience,
             claims: claims,
+            notBefore: DateTime.UtcNow,
             expires: expiresAt,
             signingCredentials: credentials);
 

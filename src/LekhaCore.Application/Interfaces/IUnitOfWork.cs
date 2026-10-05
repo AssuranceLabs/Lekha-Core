@@ -1,16 +1,12 @@
 ﻿using System.Data;
 
-namespace Makuri.Core
+namespace LekhaCore.Application.Interfaces;
+
+public interface IUnitOfWork : IDisposable
 {
-    public interface IUnitOfWork : IDisposable
-    {
-        void Commit();
+    void Commit();
 
-        /// <summary>
-        /// Persists all changes made in this unit of work to the database.
-        /// </summary>
-        Task<int> CommitAsync(bool isSoftDelete = true, CancellationToken cancellationToken = default);
+    Task<int> CommitAsync(bool isSoftDelete = true, CancellationToken cancellationToken = default);
 
-        ITransaction BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.Snapshot);
-    }
+    ITransaction BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted);
 }

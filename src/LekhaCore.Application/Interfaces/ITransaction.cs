@@ -1,8 +1,8 @@
-﻿namespace Makuri.Core
+﻿namespace LekhaCore.Application.Interfaces;
+
+public interface ITransaction : IDisposable
 {
-    public interface ITransaction : IDisposable
-    {
-        void Commit();
-        void Rollback();
-    }
+    void Commit();
+
+    void Rollback();
 }

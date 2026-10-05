@@ -1,12 +1,12 @@
-﻿using Makuri.Core.Domain.User;
+﻿namespace LekhaCore.Application.Interfaces;
 
-namespace Makuri.Core
+public interface IWorkContext
 {
-    public interface IWorkContext
-    {
-        /// <summary>
-        /// Gets the current user
-        /// </summary>
-        AppUser CurrentUser { get; }
-    }
+    string CurrentUserId { get; }
+
+    string? IpAddress { get; }
+
+    string? CorrelationId { get; }
+
+    void SetCurrentUser(Guid userId);
 }

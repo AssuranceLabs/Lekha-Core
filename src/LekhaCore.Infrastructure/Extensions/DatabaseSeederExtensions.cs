@@ -1,6 +1,6 @@
-using LekhaCore.Application.Interfaces.IService;
 using LekhaCore.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,17 +16,17 @@ public static class DatabaseSeederExtensions
 
         var logger = services.GetRequiredService<ILogger<AppDbContext>>();
         var context = services.GetRequiredService<AppDbContext>();
-        var passwordHasher = services.GetRequiredService<IPasswordHasher>();
+        var configuration = services.GetRequiredService<IConfiguration>();
 
         try
         {
             await context.Database.MigrateAsync();
-            await DatabaseSeeder.SeedAsync(context, passwordHasher);
-            logger.LogInformation("Database seed completed.");
+            await DatabaseSeeder.SeedAsync(context, configuration);
+            logger.LogInformation("Database migration and seed completed.");
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            logger.LogError(ex, "Database seed failed.");
+            logger.LogError(exception, "Database migration or seed failed.");
             throw;
         }
     }

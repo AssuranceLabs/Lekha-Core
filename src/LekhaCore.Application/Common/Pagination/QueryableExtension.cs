@@ -1,28 +1,26 @@
-﻿using Microsoft.EntityFrameworkCore;
-
-namespace LekhaCore.Application.Common.Pagination
+﻿namespace LekhaCore.Application.Common.Pagination
 {
     public static class QueryableExtensions
     {
-        public static async Task<PagedResponse<T>> ToPagedResponseAsync<T>(
+        public static Task<PagedResponse<T>> ToPagedResponseAsync<T>(
             this IQueryable<T> query,
             int pageNumber,
             int pageSize)
         {
-            var totalCount = await query.CountAsync();
+            var totalCount = query.Count();
 
-            var items = await query
+            var items = query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync();
+                .ToList();
 
-            return new PagedResponse<T>
+            return Task.FromResult(new PagedResponse<T>
             {
                 Items = items,
                 PageNumber = pageNumber,
                 PageSize = pageSize,
                 TotalCount = totalCount
-            };
+            });
         }
     }
 }

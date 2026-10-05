@@ -1,17 +1,24 @@
-﻿namespace LekhaCore.Domain.Common;
+﻿using LekhaCore.Core.BaseEntity;
+using LekhaCore.Core.Domain.Common;
+using LekhaCore.Domain.Common.Constants;
 
-public abstract class BaseEntity
+namespace LekhaCore.Domain.Common;
+
+public abstract class BaseEntity : IEntity<Guid>, IFullAudited, IAuditableEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string CreatedBy { get; set; } = AuditActors.System;
 
-    public string? CreatedBy { get; set; }
+    public DateTime CreatedOn { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public string? ModifiedBy { get; set; }
 
-    public string? UpdatedBy { get; set; }
+    public DateTime? ModifiedOn { get; set; }
 
     public bool IsDeleted { get; set; }
 
+    public string? DeletedBy { get; set; }
+
+    public DateTime? DeletedOn { get; set; }
 }

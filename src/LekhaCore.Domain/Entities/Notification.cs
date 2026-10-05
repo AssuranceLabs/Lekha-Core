@@ -1,7 +1,9 @@
+using LekhaCore.Core.Domain.Common;
 using LekhaCore.Domain.Common;
 
 namespace LekhaCore.Domain.Entities;
 
+[AuditSubType("Notification")]
 public class Notification : BaseEntity
 {
     public Guid UserId { get; set; }
@@ -14,5 +16,5 @@ public class Notification : BaseEntity
 
     public DateTime? ReadAt { get; set; }
 
-    public User User { get; set; } = null!;
+    public User? User { get; set; }
 }

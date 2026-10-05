@@ -1,102 +1,169 @@
-using LekhaCore.Application.Interfaces.IService;
+using LekhaCore.Domain.Authorization;
 using LekhaCore.Domain.Entities;
-using LekhaCore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace LekhaCore.Infrastructure.Persistence;
 
 public static class DatabaseSeeder
 {
-    private const string OnboardingWorkflowName = "Employee Onboarding Workflow";
-
-    public static async Task SeedAsync(AppDbContext context, IPasswordHasher passwordHasher)
+    public static async Task SeedAsync(AppDbContext context, IConfiguration configuration)
     {
-        await SeedUsersAsync(context, passwordHasher);
-        await SeedWorkflowDefinitionsAsync(context);
+        await SeedPermissionsAsync(context);
+        await SeedRolesAsync(context, configuration);
+        await SeedMenusAsync(context);
     }
 
-    private static async Task SeedUsersAsync(AppDbContext context, IPasswordHasher passwordHasher)
+    private static async Task SeedPermissionsAsync(AppDbContext context)
     {
-        if (await context.Users.AnyAsync())
+        var existing = await context.Permissions
+            .IgnoreQueryFilters()
+            .Select(permission => permission.Code)
+            .ToListAsync();
+        var known = existing.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var code in Permissions.All)
         {
-            return;
+            if (!known.Add(code))
+                continue;
+
+            context.Permissions.Add(new Permission
+            {
+                Code = code,
+                Name = code
+            });
         }
 
-        var users = new List<User>
-        {
-            CreateUser("System Admin", "admin@laxmisunrise.com", "Admin@123", Role.Admin, passwordHasher),
-            CreateUser("HR Manager", "hr@laxmisunrise.com", "Hr@12345", Role.HR, passwordHasher),
-            CreateUser("Department Manager", "manager@laxmisunrise.com", "Manager@123", Role.Manager, passwordHasher),
-            CreateUser("IT Support", "it@laxmisunrise.com", "It@12345", Role.IT, passwordHasher),
-            CreateUser("Security Officer", "security@laxmisunrise.com", "Security@123", Role.Security, passwordHasher)
-        };
-
-        await context.Users.AddRangeAsync(users);
         await context.SaveChangesAsync();
     }
 
-    private static async Task SeedWorkflowDefinitionsAsync(AppDbContext context)
+    private static async Task SeedRolesAsync(AppDbContext context, IConfiguration configuration)
     {
-        if (await context.WorkflowDefinitions.AnyAsync(x => x.Name == OnboardingWorkflowName))
+        var seeds = configuration.GetSection("Rbac:Roles").Get<List<RbacRoleSeed>>() ?? [];
+        var permissions = await context.Permissions.ToListAsync();
+        var permissionByCode = permissions.ToDictionary(permission => permission.Code, StringComparer.OrdinalIgnoreCase);
+        var roles = await context.Roles.ToListAsync();
+        var roleByName = roles.ToDictionary(role => role.Name, StringComparer.OrdinalIgnoreCase);
+        var existingLinks = await context.RolePermissions
+            .Select(grant => new { grant.RoleId, grant.Permission.Code })
+            .ToListAsync();
+        var linkSet = existingLinks
+            .Select(link => (link.RoleId, link.Code.ToLowerInvariant()))
+            .ToHashSet();
+
+        foreach (var seed in seeds)
         {
+            var name = seed.Name.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                throw new InvalidOperationException("RBAC seed role name is required.");
+
+            if (!roleByName.TryGetValue(name, out var role))
+            {
+                role = new Role
+                {
+                    Name = name,
+                    Description = seed.Description,
+                    IsActive = true
+                };
+                context.Roles.Add(role);
+                roleByName[name] = role;
+            }
+
+            IEnumerable<string> codes = seed.GrantAllDefinedPermissions
+                ? Permissions.All
+                : seed.Permissions;
+
+            foreach (var code in codes.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (!Permissions.IsDefined(code))
+                    throw new InvalidOperationException($"Unknown permission '{code}' on role '{name}'.");
+
+                if (!permissionByCode.TryGetValue(code, out var permission))
+                    throw new InvalidOperationException($"Permission '{code}' was not seeded.");
+
+                var key = (role.Id, code.ToLowerInvariant());
+                if (role.Id > 0 && !linkSet.Add(key))
+                    continue;
+
+                if (role.Id == 0 && role.RolePermissions.Any(grant =>
+                        string.Equals(grant.Permission.Code, code, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                var grant = new RolePermission
+                {
+                    Role = role,
+                    Permission = permission
+                };
+                role.RolePermissions.Add(grant);
+                context.RolePermissions.Add(grant);
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedMenusAsync(AppDbContext context)
+    {
+        var existing = await context.Menus.IgnoreQueryFilters().ToListAsync();
+        var byCode = existing.ToDictionary(menu => menu.Code, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var definition in DashboardMenuCatalog.All.Where(menu => menu.ParentCode is null))
+            AddOrUpdateMenu(context, byCode, definition, parent: null);
+
+        foreach (var definition in DashboardMenuCatalog.All.Where(menu => menu.ParentCode is not null))
+        {
+            if (!byCode.TryGetValue(definition.ParentCode!, out var parent))
+                throw new InvalidOperationException($"Parent menu '{definition.ParentCode}' was not seeded.");
+
+            AddOrUpdateMenu(context, byCode, definition, parent);
+        }
+
+        var catalogCodes = DashboardMenuCatalog.All
+            .Select(menu => menu.Code)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var menu in existing.Where(menu => !menu.IsDeleted && !catalogCodes.Contains(menu.Code)))
+            context.Menus.Remove(menu);
+
+        await context.SaveChangesAsync();
+    }
+
+    private static void AddOrUpdateMenu(
+        AppDbContext context,
+        Dictionary<string, Menu> byCode,
+        MenuSeedDefinition definition,
+        Menu? parent)
+    {
+        if (byCode.TryGetValue(definition.Code, out var existing))
+        {
+            existing.RequiredPermission = definition.RequiredPermission;
+            existing.Name = definition.Name;
+            existing.Route = definition.Route;
+            existing.Icon = definition.Icon;
+            existing.SortOrder = definition.SortOrder;
+            existing.IsActive = true;
+            existing.IsDeleted = false;
+            existing.DeletedBy = null;
+            existing.DeletedOn = null;
             return;
         }
 
-        var workflow = new WorkflowDefinition
+        var menu = new Menu
         {
-            Name = OnboardingWorkflowName,
-            Description = "Standard employee onboarding: HR → Manager → IT → Security",
+            Code = definition.Code,
+            Name = definition.Name,
+            Route = definition.Route,
+            Icon = definition.Icon,
+            SortOrder = definition.SortOrder,
             IsActive = true,
-            Steps =
-            [
-                new WorkflowStepDefinition
-                {
-                    StepOrder = 1,
-                    Name = "HR approval",
-                    AssignedRole = Role.HR,
-                    StepType = "Approval"
-                },
-                new WorkflowStepDefinition
-                {
-                    StepOrder = 2,
-                    Name = "Manager approval",
-                    AssignedRole = Role.Manager,
-                    StepType = "Approval"
-                },
-                new WorkflowStepDefinition
-                {
-                    StepOrder = 3,
-                    Name = "IT asset assignment",
-                    AssignedRole = Role.IT,
-                    StepType = "AssetAssignment"
-                },
-                new WorkflowStepDefinition
-                {
-                    StepOrder = 4,
-                    Name = "Security clearance",
-                    AssignedRole = Role.Security,
-                    StepType = "Clearance"
-                }
-            ]
+            RequiredPermission = definition.RequiredPermission
         };
 
-        await context.WorkflowDefinitions.AddAsync(workflow);
-        await context.SaveChangesAsync();
-    }
+        if (parent is { Id: > 0 })
+            menu.ParentId = parent.Id;
+        else if (parent is not null)
+            menu.Parent = parent;
 
-    private static User CreateUser(
-        string fullName,
-        string email,
-        string password,
-        Role role,
-        IPasswordHasher passwordHasher)
-    {
-        return new User
-        {
-            FullName = fullName,
-            Email = email.ToLowerInvariant(),
-            PasswordHash = passwordHasher.Hash(password),
-            Role = role
-        };
+        context.Menus.Add(menu);
+        byCode[definition.Code] = menu;
     }
 }

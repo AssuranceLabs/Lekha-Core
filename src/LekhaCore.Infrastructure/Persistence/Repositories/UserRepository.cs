@@ -1,30 +1,29 @@
 using LekhaCore.Application.Interfaces.IRepo;
 using LekhaCore.Domain.Entities;
-using LekhaCore.Domain.Enums;
-using LekhaCore.Infrastructure.Persistence;
+using LekhaCore.Infrastructure.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
 namespace LekhaCore.Infrastructure.Persistence.Repositories;
 
-public class UserRepository(AppDbContext context) : IUserRepository
+public class UserRepository(AppDbContext context) : Repository<User>(context), IUserRepository
 {
-    public async Task<User?> GetByEmailAsync(string email)
+    public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
-        return await context.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Email == email && !x.IsDeleted);
+        return TableNoTracking.FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
     }
 
-    public async Task<User?> GetByIdAsync(Guid id)
+    public Task<User?> GetByEmailTrackedAsync(string email, CancellationToken cancellationToken = default)
     {
-        return await context.Users
-            .FirstOrDefaultAsync(x => x.GUID== id && !x.IsDeleted);
+        return Table.FirstOrDefaultAsync(user => user.Email == email, cancellationToken);
     }
 
-    public async Task<List<User>> GetByRoleAsync(Role role)
+    public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await context.Users
-            .Where(x => x.Role == role && !x.IsDeleted)
-            .ToListAsync();
+        return Table.FirstOrDefaultAsync(user => user.GUID == id, cancellationToken);
+    }
+
+    public Task<User?> GetByPublicIdReadOnlyAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return TableNoTracking.FirstOrDefaultAsync(user => user.GUID == id, cancellationToken);
     }
 }

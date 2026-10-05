@@ -2,13 +2,9 @@ using LekhaCore.Domain.Entities;
 
 namespace LekhaCore.Application.Interfaces.IRepo;
 
-public interface IRefreshTokenRepository
+public interface IRefreshTokenRepository : IRepository<RefreshToken>
 {
-    Task AddAsync(RefreshToken refreshToken);
+    Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken = default);
 
-    Task<RefreshToken?> GetByTokenAsync(string token);
-
-    Task UpdateAsync(RefreshToken refreshToken);
-
-    Task SaveChangesAsync();
+    Task RevokeAllForUserAsync(Guid userId, DateTime revokedAtUtc, CancellationToken cancellationToken = default);
 }

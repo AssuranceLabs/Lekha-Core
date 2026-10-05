@@ -1,55 +1,52 @@
-﻿using LekhaCore.Core;
+﻿using LekhaCore.Application.Common.Exceptions;
+using LekhaCore.Application.Interfaces;
+using LekhaCore.Infrastructure.Persistence;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 
-namespace LekhaCore.Data.EntityFramework
+namespace LekhaCore.Infrastructure.EntityFramework;
+
+public class UnitOfWork : IUnitOfWork
 {
-    public class UnitOfWork : IUnitOfWork
+    protected readonly AppDbContext DbContext;
+
+    public UnitOfWork(AppDbContext dbContext)
     {
-        protected readonly ApplicationDbContext _dbContext;
+        DbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+    }
 
-        public UnitOfWork(ApplicationDbContext dbContext)
-        {
-            _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
-        }
+    public void Commit()
+    {
+        DbContext.SaveChanges();
+    }
 
-        public void Commit()
-        {
-            _dbContext.Commit();
-        }
+    public async Task<int> CommitAsync(bool isSoftDelete = true, CancellationToken cancellationToken = default)
+    {
+        DbContext.UseSoftDelete = isSoftDelete;
 
-        /// <summary>
-        /// Commits all tracked changes to the database.
-        /// </summary>
-        public async Task<int> CommitAsync(bool isSoftDelete = true, CancellationToken cancellationToken = default)
+        try
         {
-            try
-            {
-                return await _dbContext.CommitAsync(isSoftDelete, cancellationToken).ConfigureAwait(false);
-            }
-            catch (DbUpdateException dbEx)
-            {
-                // Wrap EF-specific exception with context, preserve inner exception
-                throw new Exception("An error occurred while committing changes to the database.", dbEx);
-            }
-            catch
-            {
-                // Re-throw everything else, preserving stack trace
-                throw;
-            }
+            return await DbContext.SaveChangesAsync(cancellationToken);
         }
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
+        {
+            throw new UniqueConstraintException("A unique constraint was violated.", exception);
+        }
+    }
 
-        public ITransaction BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
-        {
-            return new DbTransaction(_dbContext.Database.CurrentTransaction ?? _dbContext.Database.BeginTransaction(isolationLevel));
-        }
+    private static bool IsUniqueViolation(DbUpdateException exception) =>
+        exception.InnerException is SqlException sql && (sql.Number is 2601 or 2627);
 
-        /// <summary>
-        /// Disposes the DbContext when this UoW is disposed.
-        /// </summary>
-        public void Dispose()
-        {
-            _dbContext?.Dispose();
-        }
+    public ITransaction BeginTransaction(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
+    {
+        var current = DbContext.Database.CurrentTransaction;
+        var transaction = current ?? DbContext.Database.BeginTransaction(isolationLevel);
+        return new DbTransaction(transaction);
+    }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
     }
 }

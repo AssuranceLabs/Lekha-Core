@@ -1,13 +1,14 @@
 using LekhaCore.Domain.Entities;
-using LekhaCore.Domain.Enums;
 
 namespace LekhaCore.Application.Interfaces.IRepo;
 
-public interface IUserRepository
+public interface IUserRepository : IRepository<User>
 {
-    Task<User?> GetByEmailAsync(string email);
+    Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
 
-    Task<User?> GetByIdAsync(Guid id);
+    Task<User?> GetByEmailTrackedAsync(string email, CancellationToken cancellationToken = default);
 
-    Task<List<User>> GetByRoleAsync(Role role);
+    Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<User?> GetByPublicIdReadOnlyAsync(Guid id, CancellationToken cancellationToken = default);
 }

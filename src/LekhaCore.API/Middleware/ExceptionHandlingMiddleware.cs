@@ -39,20 +39,20 @@ public class ExceptionHandlingMiddleware
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = error.StatusCode;
 
+        var details = new Dictionary<string, object>
+        {
+            ["traceId"] = traceId,
+            ["correlationId"] = correlationId
+        };
+
+        if (error.Errors is not null)
+            details["errors"] = error.Errors;
+
         var response = ApiResponse<object>.Fail(
             error.Message,
             error.ErrorCode,
-            error.Errors
+            details
         );
-
-        if (response.Errors is null)
-            response.Errors = new Dictionary<string, object>();
-
-        ((Dictionary<string, object>)response.Errors)
-            .TryAdd("traceId", traceId);
-
-        ((Dictionary<string, object>)response.Errors)
-            .TryAdd("correlationId", correlationId);
 
         await context.Response.WriteAsJsonAsync(response);
     }

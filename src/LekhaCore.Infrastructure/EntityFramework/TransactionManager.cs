@@ -1,112 +1,94 @@
-﻿using LekhaCore.Core;
-using LekhaCore.Core.ServiceResult;
-using Microsoft.AspNetCore.Mvc.Filters;
+﻿using LekhaCore.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
-namespace LekhaCore.Data.EntityFramework
+namespace LekhaCore.Infrastructure.EntityFramework;
+
+public class TransactionManager : ITransactionManager
 {
-    public class TransactionManager : ITransactionManager
+    private IUnitOfWork? _unitOfWork;
+    private ITransaction? _transaction;
+    private bool _isOpen;
+    private readonly ILogger _logger;
+
+    public TransactionManager(IUnitOfWork unitOfWork, ILoggerFactory loggerFactory)
     {
-        private IUnitOfWork _uow;
-        private ITransaction _tx;
-        private bool isOpen = false;
+        _unitOfWork = unitOfWork;
+        _logger = loggerFactory.CreateLogger("ActionTransactionHelper");
+    }
 
-        private readonly ILogger _log;
+    public void BeginTransaction()
+    {
+        _transaction = _unitOfWork?.BeginTransaction();
+        _isOpen = true;
+    }
 
-        public TransactionManager(IUnitOfWork uow, ILoggerFactory log)
+    public void EndTransaction(Exception? exception)
+    {
+        try
         {
-            _uow = uow;
-            _log = log.CreateLogger("ActionTransactionHelper");
-        }
+            if (_transaction is null || _unitOfWork is null)
+                throw new NotSupportedException("Transaction has not been started.");
 
-        public void BeginTransaction()
-        {
-            _tx = _uow.BeginTransaction();
-            isOpen = true;
-        }
-
-        public void EndTransaction(ActionExecutedContext filterContext)
-        {
-            try
+            if (exception is null)
             {
-                if (_tx == null) throw new NotSupportedException();
-                if (filterContext.Exception == null)
+                if (_isOpen)
                 {
-                    if (isOpen)
-                    {
-                        dynamic d = filterContext.Result;
-                        if (d != null && d.Value is ServiceResult)
-                        {
-
-                            var res = (ServiceResult)d.Value;
-                            if (!res.Status)
-                            {
-                                _tx.Rollback();
-                                return;
-                            }
-                        }
-                        _uow.Commit();
-                        _tx.Commit();
-                        isOpen = false;
-                    }
-
-                }
-                else
-                {
-                    _tx.Rollback();
+                    _unitOfWork.Commit();
+                    _transaction.Commit();
+                    _isOpen = false;
                 }
             }
-            catch (Exception ex)
+            else
             {
-                _log.LogError(ex.Message);
-                throw new AggregateException(filterContext.Exception, ex);
+                _transaction.Rollback();
+                _isOpen = false;
             }
         }
-
-        public void EndTransaction()
+        catch (Exception completionFailure)
         {
-            if (isOpen)
-            {
-                _uow.Commit();
-                _tx.Commit();
-                isOpen = false;
-            }
-            try
-            {
-                _tx.Rollback();
-            }
-            catch (Exception ex)
-            {
-                _log.LogError(ex.Message);
-            }
+            _logger.LogError(completionFailure, "Failed to complete the database transaction.");
+            throw;
         }
+    }
 
-        public void RollBack()
+    public void EndTransaction()
+    {
+        if (_isOpen && _unitOfWork is not null && _transaction is not null)
         {
-            try
-            {
-                isOpen = false;
-                _tx.Rollback();
-            }
-            catch (Exception ex)
-            {
-                _log.LogError(ex.Message);
-            }
+            _unitOfWork.Commit();
+            _transaction.Commit();
+            _isOpen = false;
+            return;
         }
 
-        public void CloseSession()
+        try
         {
-            if (_tx != null)
-            {
-                _tx.Dispose();
-                _tx = null;
-            }
-
-            if (_uow != null)
-            {
-                _uow.Dispose();
-                _uow = null;
-            }
+            _transaction?.Rollback();
         }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to roll back the database transaction.");
+        }
+    }
+
+    public void RollBack()
+    {
+        try
+        {
+            _isOpen = false;
+            _transaction?.Rollback();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Failed to roll back the database transaction.");
+        }
+    }
+
+    public void CloseSession()
+    {
+        _transaction?.Dispose();
+        _transaction = null;
+        _unitOfWork?.Dispose();
+        _unitOfWork = null;
     }
 }
