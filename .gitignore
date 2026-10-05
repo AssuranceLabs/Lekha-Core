@@ -27,3 +27,4 @@ TestResults/
 # Logs and local data
 *.log
 backups/
+.vs/

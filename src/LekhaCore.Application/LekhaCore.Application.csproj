@@ -5,9 +5,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\LekhaCore.Domain\LekhaCore.Domain.csproj" />
+
 	</ItemGroup>
 
 </Project>

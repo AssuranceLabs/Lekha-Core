@@ -1,6 +1,4 @@
 <Solution>
-  <Project Path="../src.AppHost/LekhaCore.AppHost.csproj" />
-  <Project Path="../src.ServiceDefaults/LekhaCoreServiceDefaults.csproj" />
   <Project Path="LekhaCore.API/LekhaCore.API.csproj" />
   <Project Path="LekhaCore.Application/LekhaCore.Application.csproj" Id="8235d31d-6bff-427b-822a-b013d7112765" />
   <Project Path="LekhaCore.Domain/LekhaCore.Domain.csproj" Id="5e01a545-8818-4037-859d-df1f182fdec6" />
